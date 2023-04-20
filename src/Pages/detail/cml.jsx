@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Card, Modal, Form, Input, Space } from 'antd';
 import { PlusOutlined, FormOutlined, FileTextOutlined, DeleteOutlined } from '@ant-design/icons';
-import { BrowserRouter as Router, Route, Link, Switch, useHistory } from "react-router-dom";
+import { BrowserRouter as Router, Route, Link, Switch, useHistory, useParams } from "react-router-dom";
 import { HTTP } from '../../axios';
 
 const CmlTable = () => {
@@ -9,117 +9,37 @@ const CmlTable = () => {
   const [CMLState, setCMLState] = useState(false);
 
   const history = useHistory();
+  const { line_number } = useParams();
+  console.log({line_number});
 
-  const [data, setData] = useState("");
+  const [data, setData] = useState([]);
+
+  const fetchData = async () => {
+    try {
+      // Make GET request to the API endpoint
+      console.log({line_number});
+      const response = await HTTP.post(`/cml/search/${line_number}`);
+      setData(response.data.data);
+      console.log(response.data);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Make GET request to the API endpoint
-        const response = await HTTP.get("/cml/view");
-        setData(response.data.data[0]);
-        console.log(response.data);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
-
     fetchData();
   }, []);
 
-  // const dataSource = [
-  //   {
-  //       key: '1',
-  //       cml_number: '1',
-  //       cml_description: 'Pipe',
-  //       actual_outside_diameter: '168',
-  //       design_thickness: '4',
-  //       structural_thickness: '3',
-  //       required_thickness: '4',
-  //   },
-  //   {
-  //       key: '2',
-  //       cml_number: '2',
-  //       cml_description: 'Elbow i',
-  //       actual_outside_diameter: '',
-  //       design_thickness: '',
-  //       structural_thickness: '',
-  //       required_thickness: '',
-  //   },
-  //   {
-  //       key: '3',
-  //       cml_number: '3',
-  //       cml_description: 'Elbow ii',
-  //       actual_outside_diameter: '',
-  //       design_thickness: '',
-  //       structural_thickness: '',
-  //       required_thickness: '',
-  //   },
-  //   {
-  //       key: '4',
-  //       cml_number: '4',
-  //       cml_description: 'Pipe',
-  //       actual_outside_diameter: '',
-  //       design_thickness: '',
-  //       structural_thickness: '',
-  //       required_thickness: '',
-  //   },
-  //   {
-  //       key: '5',
-  //       cml_number: '5',
-  //       cml_description: 'Pipe',
-  //       actual_outside_diameter: '',
-  //       design_thickness: '',
-  //       structural_thickness: '',
-  //       required_thickness: '',
-  //   },
-    // {
-    //     key: '6',
-    //     cml_number: '1',
-    //     cml_description: 'Pipe',
-    //     actual_outside_diameter: '',
-    //     design_thickness: '',
-    //     structural_thickness: '',
-    //     required_thickness: '',
-    // },
-    // {
-    //     key: '7',
-    //     cml_number: '2',
-    //     cml_description: 'Tee i',
-    //     actual_outside_diameter: '',
-    //     design_thickness: '',
-    //     structural_thickness: '',
-    //     required_thickness: '',
-    // },
-    // {
-    //     key: '8',
-    //     cml_number: '3',
-    //     cml_description: 'Tee iii',
-    //     actual_outside_diameter: '',
-    //     design_thickness: '',
-    //     structural_thickness: '',
-    //     required_thickness: '',
-    // },
-    // {
-    //     key: '9',
-    //     cml_number: '4',
-    //     cml_description: 'Pipe',
-    //     actual_outside_diameter: '',
-    //     design_thickness: '',
-    //     structural_thickness: '',
-    //     required_thickness: '',
-    // }
-  // ];
-
   const dataSource = data.map(item => {
     return {
-      key: item.key,
+      key: item.id,
+      line_number_id: item.line_number_id,
       cml_number: item.cml_number,
       cml_description: item.cml_description,
       actual_outside_diameter: item.actual_outside_diameter,
       design_thickness: item.design_thickness,
       structural_thickness: item.structural_thickness,
-      required_thickness: item.required_thickness,
+      required_thickness: item.required_thickness
     }
   });
 
@@ -251,7 +171,7 @@ const CmlTable = () => {
           <div className='herder' style={{ float: 'left' , paddingBottom:"10px", textAlign: 'left' }}>
             
             <span style={{ fontSize: '20px', fontWeight: 'bold' }}>Line Number: </span>
-            <span style={{ fontSize: '16px'}}>6-PL-J4N-01007</span>
+            <span style={{ fontSize: '16px'}}>{line_number}</span>
           </div>
           <div className='add-new-button' style={{ float: 'right' , paddingBottom:"10px"}}>
                 <Button 
