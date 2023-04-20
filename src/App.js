@@ -3,7 +3,7 @@ import PipeTable from'./Pages/index/index'
 import CmlTable from './Pages/detail/cml';
 import TestPointTable from './Pages/detail/testPoint';
 import ThicknessTable from './Pages/detail/thickness';
-import { BrowserRouter as Router, Route, Switch, Link, useRouteMatch } from "react-router-dom";
+import { BrowserRouter as Router, Route, Switch, Link, useRouteMatch, useParams } from "react-router-dom";
 
 const Index = () => {
   return  <div>
@@ -11,9 +11,10 @@ const Index = () => {
           </div>;
 };
 
-const Cml = () => {
+const Cml = ({match}) => {
+  const { line_number } = useParams();
   return  <div>
-            <CmlTable />
+            <CmlTable line_number ={line_number} />
           </div>;
 };
 
@@ -35,7 +36,7 @@ function App() {
     <Router>
       <Switch>
         <Route exact path="/" component={Index} />
-        <Route path="/cml" component={Cml} />
+        <Route path="/cml/:line_number" component={Cml} />
         <Route path="/testPoint" component={TestPoint} />
         <Route path="/thickness" component={Thickness} />
       </Switch>
