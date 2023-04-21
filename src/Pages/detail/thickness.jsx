@@ -1,86 +1,62 @@
 import React, { useState,useEffect } from 'react';
 import { Table, Button, Card, Modal, Form, Input, Space, DatePicker } from 'antd';
 import { PlusOutlined, FormOutlined, FileTextOutlined, DeleteOutlined } from '@ant-design/icons';
+import { BrowserRouter as Router, Route, Link, Switch, useHistory, useParams } from "react-router-dom";
 import { HTTP } from '../../axios';
-import dayjs from 'dayjs';
+import moment from 'moment';
 
 const ThicknessTable = () => {
   const [visible, setVisible] = useState(false);
   const [State, setState] = useState(false);
+  const [RowSelect, setRowSelect] = useState([""]);
 
-  const onChange = (date, dateString) => {
-    console.log(date, dateString);
+  const [LineNumber, setLineNumber] = useState('');
+  const [CmlNumber, setCmlNumber] = useState('');
+  const [TPNumber, setTPNumber] = useState('');
+  const [data, setData] = useState([]);
+
+  const { line_number } = useParams();
+  const { cml_number } = useParams();
+  const { tp_number } = useParams();
+
+
+  const fetchData = async () => {
+    try {
+      // Make GET request to the API endpoint
+      const response = await HTTP.post(`/thickness/search/${line_number}/${cml_number}/${tp_number}`);
+      setCmlNumber(response.data.data[0].cml_number);
+      setLineNumber(response.data.data[0].line_number);
+      setTPNumber(response.data.data[0].tp_number);
+      setData(response.data.data);
+      console.log(response.data);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
   };
 
-  const [data, setData] = useState("");
-
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Make GET request to the API endpoint
-        const response = await HTTP.get("/thickness/view");
-        setData(response.data.data[0]);
-        console.log(response.data);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
-
     fetchData();
   }, []);
 
-  const dataSource = [
-    {
-        key: '1',
-        inspection_date: '1/1/2021',
-        actual_thickness: '6.5'
-    },
-    {
-        key: '2',
-        inspection_date: '1/1/2022',
-        actual_thickness: '6.78'
-    },
-    {
-        key: '3',
-        inspection_date: '1/1/2021',
-        actual_thickness: '6.99'
-    },
-    {
-        key: '4',
-        inspection_date: '1/1/2022',
-        actual_thickness: '6.87'
-    },
-    {
-        key: '5',
-        inspection_date: '1/1/2021',
-        actual_thickness: '6.63'
-    },
-    {
-        key: '6',
-        inspection_date: '1/1/2022',
-        actual_thickness: '6.54'
-    },
-    {
-        key: '7',
-        inspection_date: '1/1/2021',
-        actual_thickness: '6.77'
-    },
-    {
-        key: '8',
-        inspection_date: '1/1/2022',
-        actual_thickness: '6.43'
-    },
-    {
-        key: '9',
-        inspection_date: '1/1/2021',
-        actual_thickness: '6.5'
-    },
-    {
-        key: '10',
-        inspection_date: '1/1/2022',
-        actual_thickness: '6.78'
-    },
-  ];
+  const [Add, setAdd] = useState({
+    line_number: LineNumber,
+    cml_number: CmlNumber,
+    tp_number: TPNumber,
+    inspection_date: '',
+    actual_thickness: ''
+  });
+
+
+  const dataSource = Array.isArray(data) ? data.map(item => {
+    return {
+      key: item.id,
+      line_number: item.line_number,
+      cml_number: item.cml_number,
+      tp_number: item.tp_number,
+      inspection_date: item.inspection_date,
+      actual_thickness: item.actual_thickness
+    }
+  }): [];
 
   const columns = [
     {
@@ -89,6 +65,13 @@ const ThicknessTable = () => {
       width: '25%',
       editable: true,
       align: 'center',
+      onCell: record => ({
+        record,
+        editable: true,
+        dataIndex: 'inspection_date',
+        title: 'Inspection Date',
+        handleInputChange: handleInputChange, // Callback function for handling input changes
+      }),
     },
     {
       title: 'Actual Thickness (mm)',
@@ -96,6 +79,13 @@ const ThicknessTable = () => {
       width: '25%',
       editable: true,
       align: 'center',
+      onCell: record => ({
+        record,
+        editable: true,
+        dataIndex: 'actual_thickness',
+        title: 'Actual Thickness (mm)',
+        handleInputChange: handleInputChange, // Callback function for handling input changes
+      }),
     },
     {
       title: 'Action',
@@ -109,7 +99,7 @@ const ThicknessTable = () => {
             <Button 
                 type='text' 
                 shape='round' 
-                onClick={() => handleStateAction()} 
+                onClick={() => handleStateAction(record)} 
                 icon={<FormOutlined />} 
                 size='small'
             >
@@ -119,7 +109,7 @@ const ThicknessTable = () => {
             <Button 
             type='text' 
             shape='round' 
-            // onClick={() => handleAction()} 
+            onClick={() => handleRemoveAction(record)} 
             icon={<DeleteOutlined />} 
             size='small'
             >
@@ -129,14 +119,31 @@ const ThicknessTable = () => {
     }
   ];
 
-  const handleAction = () => {
-    
-    setVisible(true)
+  const handleRemoveAction = async (record) => {
+    try {
+      await HTTP.delete(`/thickness/remove/${record.key}`)
+      console.log(`remove success`);
+      fetchData();
+    }catch (error) { 
+      console.error(error);
+    }
   };
 
   const handleModalOk = () => {
-    
-    setVisible(false);
+    try {
+      HTTP.post('/thickness/add', Add)
+        .then(response => {
+          console.log('Data posted successfully:', response.data);
+          fetchData();
+          setVisible(false);
+        })
+        .catch(error => {
+          console.error('Error posting data:', error);
+        });
+      
+    }catch (error) {
+      console.error(error);
+    }
   };
 
   const handleModalCancel = () => {
@@ -144,9 +151,25 @@ const ThicknessTable = () => {
     setVisible(false);
   };
 
-  const handleStateAction = () => {
-    
+  const handleStateAction = async (record) => {
     setState(true)
+    const params = {
+      "values": {
+        "id": record.key
+      }
+    }
+    try {
+      // Make POST request to the API endpoint
+      const response = await HTTP.post("/thickness/search", params);
+      const filteredData = data.filter(item => item.key === record.key);
+      const updatedRowSelect = response.data.data[0];
+      // Update RowSelect with the new values
+      setRowSelect(updatedRowSelect);
+      // console.log(RowSelect);
+      console.log(updatedRowSelect);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
   };
 
   const handleStateCancel = () => {
@@ -155,8 +178,47 @@ const ThicknessTable = () => {
   };
 
   const handleStateOk = () => {
-    
+    try {
+      HTTP.patch('/thickness/update', RowSelect)
+        .then(response => {
+          console.log('Data posted successfully:', response.data);
+          fetchData();
+        })
+        .catch(error => {
+          console.error('Error posting data:', error);
+        });
+      setVisible(false);
+    }catch (error) {
+      console.error(error);
+    }
     setState(false);
+  };
+
+  const handleAction = () => {
+    setVisible(true);
+  };
+
+  const handleFieldChange = (fieldName, value) => {
+    setAdd(prevFormData => ({
+      ...prevFormData,
+      line_number: LineNumber,
+      cml_number: CmlNumber,
+      tp_number: TPNumber,
+      [fieldName]: value
+    }));
+  };
+
+  const handleInputChange = (field, value) => {
+    setRowSelect(prevRowSelect => ({ 
+      ...prevRowSelect, 
+      [field]: value 
+    }));
+  };
+
+  const handleDateChange = (date, dateString) => {
+    const formattedDate = moment(date).format('YYYY-MM-DD');
+    handleFieldChange('inspection_date',formattedDate);
+    handleInputChange('inspection_date',formattedDate);
   };
 
   return (
@@ -169,15 +231,15 @@ const ThicknessTable = () => {
           <div className='herder' style={{ float: 'left' , paddingBottom:"10px", textAlign: 'left' }}>
             <div>
                 <span style={{ fontSize: '20px', fontWeight: 'bold' }}>Line Number: </span>
-                <span style={{ fontSize: '16px'}}>6-PL-J4N-01007</span>
+                <span style={{ fontSize: '16px'}}>{LineNumber}</span>
             </div>
             <div>
                 <span style={{ fontSize: '20px', fontWeight: 'bold' }}>CML Number: </span>
-                <span style={{ fontSize: '16px'}}>1</span>
+                <span style={{ fontSize: '16px'}}>{CmlNumber}</span>
             </div>
             <div>
                 <span style={{ fontSize: '20px', fontWeight: 'bold' }}>TP Number: </span>
-                <span style={{ fontSize: '16px'}}>1</span>
+                <span style={{ fontSize: '16px'}}>{TPNumber}</span>
             </div>
           </div>
           <div className='add-new-button' style={{ float: 'right' , paddingBottom:"10px"}}>
@@ -209,12 +271,24 @@ const ThicknessTable = () => {
         onCancel={handleModalCancel}
       >
         <Form layout='vertical'>
-                <Form.Item label='Inspection Date'>
-                    <DatePicker style={{width:"100%"}} onChange={onChange} />
+                <Form.Item 
+                  label='Inspection Date'
+                  name='inspection_date'
+                >
+                    <DatePicker 
+                      style={{width:"100%"}}
+                      value={Add.inspection_date ? moment(Add.inspection_date) : null}
+                      onChange={handleDateChange} 
+                    />
                 </Form.Item>
 
-                <Form.Item label='Actual Thickness'>
-                    <Input />
+                <Form.Item
+                  label='Actual Thickness'
+                  name = "actual_thickness">
+                    <Input
+                      value={Add.actual_thickness}
+                      onChange={(e) => handleFieldChange('actual_thickness', e.target.value)}
+                    />
                 </Form.Item>
         </Form>
       </Modal>
@@ -227,10 +301,18 @@ const ThicknessTable = () => {
       >
             <Form layout='vertical'>
                 <Form.Item label='Inspection Date'>
-                    <DatePicker style={{width:"100%"}} defaultValue={dayjs({data}.data.inspection_date, 'YYYY-MM-DD')} onChange={(e) => setData(e.target.value)} />
+                    < DatePicker
+                      style={{width:"100%"}}
+                      value={RowSelect.inspection_date ? moment(RowSelect.inspection_date) : null}
+                      onChange={handleDateChange}
+                      />
                 </Form.Item>
                 <Form.Item label='Actual Thickness'>
-                    <Input value={{data}.data.actual_thickness} onChange={(e) => setData(e.target.value)} />
+                    <Input
+                      value={RowSelect.actual_thickness} 
+                      placeholder='Please input Actual Thickness'
+                      onChange={(e) => handleInputChange('pipe_size', e.target.value)}
+                      />                
                 </Form.Item>
             </Form>
         </Modal>

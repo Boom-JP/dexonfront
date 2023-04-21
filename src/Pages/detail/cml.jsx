@@ -7,20 +7,22 @@ import { HTTP } from '../../axios';
 const CmlTable = () => {
   const [visible, setVisible] = useState(false);
   const [CMLState, setCMLState] = useState(false);
+  const [LineNumber, setLineNumber] = useState('');
+  const [RowSelect, setRowSelect] = useState([""]);
 
   const history = useHistory();
   const { line_number } = useParams();
-  console.log({line_number});
+  // console.log({line_number});
 
   const [data, setData] = useState([]);
 
   const fetchData = async () => {
     try {
       // Make GET request to the API endpoint
-      console.log({line_number});
       const response = await HTTP.post(`/cml/search/${line_number}`);
+      setLineNumber(response.data.data[0].line_number_id)
       setData(response.data.data);
-      console.log(response.data);
+      // console.log(response.data.data[0].line_number_id);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -30,10 +32,21 @@ const CmlTable = () => {
     fetchData();
   }, []);
 
+  const [Add, setAdd] = useState({
+    line_number: line_number,
+    cml_number: '',
+    cml_description: '',
+    actual_outside_diameter: '',
+    design_thickness: '',
+    structural_thickness: '',
+    required_thickness: ''
+  });
+
   const dataSource = data.map(item => {
+    console.log(data);
     return {
       key: item.id,
-      line_number_id: item.line_number_id,
+      line_number: item.line_number,
       cml_number: item.cml_number,
       cml_description: item.cml_description,
       actual_outside_diameter: item.actual_outside_diameter,
@@ -95,9 +108,9 @@ const CmlTable = () => {
         
         <Space>
             <Button 
-                type='text' 
+                type='text'
                 shape='round' 
-                onClick={() => handleTPViewAction()} 
+                onClick={() => handleTPViewAction(record)} 
                 icon={<FileTextOutlined />} 
                 size='small'
             >
@@ -107,7 +120,7 @@ const CmlTable = () => {
             <Button 
                 type='text' 
                 shape='round' 
-                onClick={() => handleCMLStateAction()} 
+                onClick={() => handleCMLStateAction(record)} 
                 icon={<FormOutlined />} 
                 size='small'
             >
@@ -117,7 +130,7 @@ const CmlTable = () => {
             <Button 
             type='text' 
             shape='round' 
-            // onClick={() => handleAction()} 
+            onClick={() => handleRemoveAction(record)}
             icon={<DeleteOutlined />} 
             size='small'
             >
@@ -127,8 +140,18 @@ const CmlTable = () => {
     }
   ];
 
-  const handleTPViewAction = () => {
-    history.push("/testPoint");
+  const handleTPViewAction = (record) => {
+    history.push(`/testPoint/${line_number}/${record.cml_number}`);
+  };
+
+  const handleRemoveAction = async (record) => {
+    try {
+      await HTTP.delete(`/cml/remove/${record.key}`)
+      console.log(`remove success`);
+      fetchData();
+    }catch (error) { 
+      console.error(error);
+    }
   };
 
   const handleAction = () => {
@@ -136,9 +159,21 @@ const CmlTable = () => {
     setVisible(true)
   };
 
-  const handleModalOk = () => {
+  const handleModalOk = async () => {
+    try {
+    HTTP.post('/cml/add', Add)
+      .then(response => {
+        console.log('Data posted successfully:', response.data);
+        fetchData();
+        setVisible(false);
+      })
+      .catch(error => {
+        console.error('Error posting data:', error);
+      });
     
-    setVisible(false);
+  }catch (error) {
+    console.error(error);
+  }
   };
 
   const handleModalCancel = () => {
@@ -146,19 +181,61 @@ const CmlTable = () => {
     setVisible(false);
   };
 
-  const handleCMLStateAction = () => {
-    
+  const handleCMLStateAction = async (record) => {
     setCMLState(true)
+    const params = {
+      "values": {
+        "id": record.key
+      }
+    }
+    try {
+      // Make POST request to the API endpoint
+      const response = await HTTP.post("/cml/search", params);
+      const filteredData = data.filter(item => item.key === record.key);
+      const updatedRowSelect = response.data.data[0];
+      // Update RowSelect with the new values
+      setRowSelect(updatedRowSelect);
+      // console.log(RowSelect);
+      console.log(updatedRowSelect);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
   };
 
   const handleCMLStateCancel = () => {
-    
     setCMLState(false);
   };
 
   const handleCMLStateOk = () => {
-    
+    try {
+      HTTP.patch('/cml/update', RowSelect)
+        .then(response => {
+          console.log('Data posted successfully:', response.data);
+          fetchData();
+        })
+        .catch(error => {
+          console.error('Error posting data:', error);
+        });
+      setVisible(false);
+    }catch (error) {
+      console.error(error);
+    }
     setCMLState(false);
+  };
+
+  const handleInputChange = (field, value) => {
+    setRowSelect(prevRowSelect => ({ 
+      ...prevRowSelect, 
+      [field]: value 
+    }));
+  };
+
+  const handleFieldChange = (fieldName, value) => {
+    setAdd(prevFormData => ({
+      ...prevFormData,
+      line_number: LineNumber,
+      [fieldName]: value
+    }));
   };
 
   return (
@@ -202,28 +279,68 @@ const CmlTable = () => {
         onCancel={handleModalCancel}
       >
         <Form layout='vertical'>
-          <Form.Item label='CML Number'>
-            <Input />
+          <Form.Item 
+            label= 'CML Number'
+            name= 'cml_number'
+          >
+            <Input
+              value={Add.cml_number}
+              placeholder='Please input CML Number'
+              onChange={(e) => handleFieldChange('cml_number', e.target.value)}
+            />
           </Form.Item>
 
-          <Form.Item label='CML Description'>
-            <Input />
+          <Form.Item 
+            label= 'CML Description'
+            name= 'cml_description'
+            >
+            <Input
+              value={Add.cml_description}
+              placeholder='Please input CML Description'
+              onChange={(e) => handleFieldChange('cml_description', e.target.value)}
+            />
           </Form.Item>
 
-          <Form.Item label='Actual Outside Diameter'>
-            <Input />
+          <Form.Item 
+            label='Actual Outside Diameter'
+            name='actual_outside_diameter'
+          >
+            <Input
+              disabled
+              value={Add.actual_outside_diameter}
+              onChange={(e) => handleFieldChange('actual_outside_diameter', e.target.value)}
+            />
           </Form.Item>
 
-          <Form.Item label='Design Thickness'>
-            <Input />
+          <Form.Item 
+            label='Design Thickness'
+            name='design_thickness'
+          >
+            <Input
+              value={Add.design_thickness}
+              disabled
+              onChange={(e) => handleFieldChange('design_thickness', e.target.value)}
+            />
           </Form.Item>
           
-          <Form.Item label='Structural Thickness'>
-            <Input />
+          <Form.Item 
+            label='Structural Thickness'
+            name='structural_thickness'
+          >
+            <Input
+              disabled
+              value={Add.structural_thickness}
+              onChange={(e) => handleFieldChange('structural_thickness', e.target.value)}
+            />
           </Form.Item>
 
-          <Form.Item label='Required Thickness'>
-            <Input />
+          <Form.Item 
+            label='Required Thickness'>
+            <Input
+              disabled
+              value={Add.required_thickness}
+              onChange={(e) => handleFieldChange('required_thickness', e.target.value)}
+            />
           </Form.Item>
 
         </Form>
@@ -237,27 +354,45 @@ const CmlTable = () => {
       >
             <Form layout='vertical'>
           <Form.Item label='CML Number'>
-            <Input value={{data}.data.cml_number} onChange={(e) => setData(e.target.value)} />
+            <Input
+              value={RowSelect.cml_number}
+              onChange={(e) => handleInputChange('cml_number', e.target.value)}
+            />
           </Form.Item>
 
           <Form.Item label='CML Description'>
-            <Input value={{data}.data.cml_description} onChange={(e) => setData(e.target.value)} />
+            <Input 
+            value={RowSelect.cml_description}
+            onChange={(e) => handleInputChange('cml_description', e.target.value)}
+            />
           </Form.Item>
 
           <Form.Item label='Actual Outside Diameter'>
-            <Input value={{data}.data.actual_outside_diameter} onChange={(e) => setData(e.target.value)} />
+            <Input
+            disabled
+            value={RowSelect.actual_outside_diameter}
+            />
           </Form.Item>
 
           <Form.Item label='Design Thickness'>
-            <Input value={{data}.data.design_thickness} onChange={(e) => setData(e.target.value)} />
+            <Input 
+            disabled
+            value={RowSelect.design_thickness}
+            />
           </Form.Item>
           
           <Form.Item label='Structural Thickness'>
-            <Input value={{data}.data.structural_thickness} onChange={(e) => setData(e.target.value)} />
+            <Input 
+            disabled
+            value={RowSelect.structural_thickness}
+            />
           </Form.Item>
 
           <Form.Item label='Required Thickness'>
-            <Input value={{data}.data.required_thickness} onChange={(e) => setData(e.target.value)} />
+            <Input
+            disabled
+            value={RowSelect.required_thickness}
+             />
           </Form.Item>
 
         </Form>

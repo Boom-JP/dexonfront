@@ -11,7 +11,6 @@ const PipeTable = () => {
   const [InfoState, setInfoState] = useState(false);
   const [RowSelect, setRowSelect] = useState([""]);
 
-  const formRef = useRef(null);
   const history = useHistory();
   const [data, setData] = useState([]);
 
@@ -386,6 +385,7 @@ const PipeTable = () => {
             name='inservice_date'
           >
             <DatePicker
+              style={{width:"100%"}}
               value={AddPiping.inservice_date ? moment(AddPiping.inservice_date) : null}
               onChange={handleDateChange}
             />

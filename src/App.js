@@ -11,22 +11,36 @@ const Index = () => {
           </div>;
 };
 
-const Cml = ({match}) => {
+const Cml = () => {
   const { line_number } = useParams();
   return  <div>
-            <CmlTable line_number ={line_number} />
+            <CmlTable 
+              line_number ={line_number} 
+            />
           </div>;
 };
 
 const TestPoint = () => {
+  const { line_number } = useParams();
+  const { cml_number } = useParams();
   return  <div>
-            <TestPointTable />
+            <TestPointTable 
+              line_number ={line_number} 
+              cml_number ={cml_number}
+            />
           </div>;
 };
 
 const Thickness = () => {
+  const { line_number } = useParams();
+  const { cml_number } = useParams();
+  const { tp_number } = useParams();
   return  <div>
-            <ThicknessTable />
+            <ThicknessTable
+              line_number = {line_number}
+              cml_number = {cml_number}
+              tp_number = {tp_number}
+            />
           </div>;
 };
 
@@ -37,8 +51,8 @@ function App() {
       <Switch>
         <Route exact path="/" component={Index} />
         <Route path="/cml/:line_number" component={Cml} />
-        <Route path="/testPoint" component={TestPoint} />
-        <Route path="/thickness" component={Thickness} />
+        <Route path="/testPoint/:line_number/:cml_number" component={TestPoint} />
+        <Route path="/thickness/:line_number/:cml_number/:tp_number" component={Thickness} />
       </Switch>
     </Router>
   );

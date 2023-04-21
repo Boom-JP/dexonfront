@@ -1,84 +1,58 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Card, Modal, Form, Input, Space } from 'antd';
 import { PlusOutlined, FormOutlined, FileTextOutlined, DeleteOutlined } from '@ant-design/icons';
-import { BrowserRouter as Router, Route, Link, Switch, useHistory } from "react-router-dom";
+import { BrowserRouter as Router, Route, Link, Switch, useHistory, useParams } from "react-router-dom";
 import { HTTP } from '../../axios';
-
 const { TextArea } = Input;
+
 const TestPointTable = () => {
   const [visible, setVisible] = useState(false);
   const [State, setState] = useState(false);
+  const [LineNumber, setLineNumber] = useState('');
+  const [CmlNumber, setCmlNumber] = useState('');
+  const [RowSelect, setRowSelect] = useState([""]);
+  const [data, setData] = useState([]);
+
+  const { line_number } = useParams();
+  const { cml_number } = useParams();
 
   const history = useHistory();
 
-  const [data, setData] = useState(" ");
+  const fetchData = async () => {
+    try {
+      const response = await HTTP.post(`/testPoint/search/${line_number}/${cml_number}`);
+      setCmlNumber(response.data.data[0].cml_number);
+      setLineNumber(response.data.data[0].line_number);
+      setData(response.data.data);
+      console.log(response.data);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Make GET request to the API endpoint
-        const response = await HTTP.get("/testPoint/view");
-        setData(response.data.data[0]);
-        console.log(response.data);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
-
     fetchData();
   }, []);
 
-  const dataSource = [
-    {
-        key: '1',
-        tp_number: '1',
-        tp_description: '0',
-        note: ''
-    },
-    {
-        key: '2',
-        tp_number: '1',
-        tp_description: '90',
-        note: ''
-    },
-    {
-        key: '3',
-        tp_number: '3',
-        tp_description: '180',
-        note: ''
-    },
-    {
-        key: '4',
-        tp_number: '4',
-        tp_description: '270',
-        note: ''
-    },
-    {
-        key: '5',
-        tp_number: '1',
-        tp_description: '0',
-        note: ''
-    },
-    {
-        key: '6',
-        tp_number: '2',
-        tp_description: '90',
-        note: ''
-    },
-    {
-        key: '7',
-        tp_number: '3',
-        tp_description: '180',
-        note: ''
-    },
-    {
-        key: '8',
-        tp_number: '4',
-        tp_description: '270',
-        note: ''
-    }
-  ];
+  const [Add, setAdd] = useState({
+    line_number: LineNumber,
+    cml_number: CmlNumber,
+    tp_number: '',
+    tp_description: '',
+    note: ''
+  });
 
+  const dataSource = Array.isArray(data) ? data.map(item => {
+    return {
+      key: item.id,
+      line_number: item.line_number,
+      cml_number: item.cml_number,
+      tp_number: item.tp_number,
+      tp_description: item.tp_description,
+      note: item.note
+    }
+  }): [];
+  
   const columns = [
     {
       title: 'TP Number',
@@ -112,7 +86,7 @@ const TestPointTable = () => {
             <Button 
                 type='text' 
                 shape='round' 
-                onClick={() => handleThicknessViewAction()} 
+                onClick={() => handleThicknessViewAction(record)} 
                 icon={<FileTextOutlined />} 
                 size='small'
             >
@@ -122,7 +96,7 @@ const TestPointTable = () => {
             <Button 
                 type='text' 
                 shape='round' 
-                onClick={() => handleStateAction()} 
+                onClick={() => handleStateAction(record)} 
                 icon={<FormOutlined />} 
                 size='small'
             >
@@ -132,7 +106,7 @@ const TestPointTable = () => {
             <Button 
             type='text' 
             shape='round' 
-            // onClick={() => handleAction()} 
+            onClick={() => handleRemoveAction(record)} 
             icon={<DeleteOutlined />} 
             size='small'
             >
@@ -142,18 +116,39 @@ const TestPointTable = () => {
     }
   ];
 
-  const handleThicknessViewAction = () => {
-    history.push("/thickness");
+  const handleThicknessViewAction = (record) => {
+    history.push(`/thickness/${line_number}/${cml_number}/${record.tp_number}`);
+  };
+
+  const handleRemoveAction = async (record) => {
+    try {
+      await HTTP.delete(`/testPoint/remove/${record.key}`)
+      console.log(`remove success`);
+      fetchData();
+    }catch (error) { 
+      console.error(error);
+    }
   };
 
   const handleAction = () => {
-    
     setVisible(true)
   };
 
   const handleModalOk = () => {
-    
-    setVisible(false);
+    try {
+      HTTP.post('/testPoint/add', Add)
+        .then(response => {
+          console.log('Data posted successfully:', response.data);
+          fetchData();
+          setVisible(false);
+        })
+        .catch(error => {
+          console.error('Error posting data:', error);
+        });
+      
+    }catch (error) {
+      console.error(error);
+    }
   };
 
   const handleModalCancel = () => {
@@ -161,9 +156,25 @@ const TestPointTable = () => {
     setVisible(false);
   };
 
-  const handleStateAction = () => {
-    
+  const handleStateAction = async (record) => {
     setState(true)
+    const params = {
+      "values": {
+        "id": record.key
+      }
+    }
+    try {
+      // Make POST request to the API endpoint
+      const response = await HTTP.post("/testPoint/search", params);
+      const filteredData = data.filter(item => item.key === record.key);
+      const updatedRowSelect = response.data.data[0];
+      // Update RowSelect with the new values
+      setRowSelect(updatedRowSelect);
+      // console.log(RowSelect);
+      console.log(updatedRowSelect);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
   };
 
   const handleStateCancel = () => {
@@ -172,8 +183,36 @@ const TestPointTable = () => {
   };
 
   const handleStateOk = () => {
-    
+    try {
+      HTTP.patch('/testPoint/update', RowSelect)
+        .then(response => {
+          console.log('Data posted successfully:', response.data);
+          fetchData();
+        })
+        .catch(error => {
+          console.error('Error posting data:', error);
+        });
+      setVisible(false);
+    }catch (error) {
+      console.error(error);
+    }
     setState(false);
+  };
+
+  const handleInputChange = (field, value) => {
+    setRowSelect(prevRowSelect => ({ 
+      ...prevRowSelect, 
+      [field]: value 
+    }));
+  };
+
+  const handleFieldChange = (fieldName, value) => {
+    setAdd(prevFormData => ({
+      ...prevFormData,
+      line_number: LineNumber,
+      cml_number: CmlNumber,
+      [fieldName]: value
+    }));
   };
 
   return (
@@ -186,11 +225,11 @@ const TestPointTable = () => {
           <div className='herder' style={{ float: 'left' , paddingBottom:"10px", textAlign: 'left' }}>
             <div>
                 <span style={{ fontSize: '20px', fontWeight: 'bold' }}>Line Number: </span>
-                <span style={{ fontSize: '16px'}}>6-PL-J4N-01007</span>
+                <span style={{ fontSize: '16px'}}>{LineNumber}</span>
             </div>
             <div>
                 <span style={{ fontSize: '20px', fontWeight: 'bold' }}>CML Number: </span>
-                <span style={{ fontSize: '16px'}}>1</span>
+                <span style={{ fontSize: '16px'}}>{CmlNumber}</span>
             </div>
           </div>
           <div className='add-new-button' style={{ float: 'right' , paddingBottom:"10px"}}>
@@ -201,7 +240,7 @@ const TestPointTable = () => {
                     size='default' 
                     onClick={() => handleAction()}
                 >
-                    Add TP
+                    Add Test Point
                 </Button>
             </div>
           <Table 
@@ -222,16 +261,38 @@ const TestPointTable = () => {
         onCancel={handleModalCancel}
       >
         <Form layout='vertical'>
-                <Form.Item label='TP Number'>
-                    <Input />
+                <Form.Item 
+                  label= 'TP Number'
+                  name= 'tp_number'
+                >
+                    <Input
+                      value={Add.tp_number}
+                      placeholder='Please input TP Number'
+                      onChange={(e) => handleFieldChange('tp_number', e.target.value)}
+                    />
                 </Form.Item>
 
-                <Form.Item label='TP Description'>
-                    <Input />
+                <Form.Item 
+                  label='TP Description'
+                  name= 'tp_description'
+                >
+                    <Input
+                      value={Add.tp_description}
+                      placeholder='Please input TP Description'
+                      onChange={(e) => handleFieldChange('tp_description', e.target.value)}
+                    />
                 </Form.Item>
 
-                <Form.Item label='Note'>
-                    <TextArea rows={4}/>
+                <Form.Item 
+                  label='Note'
+                  name= 'note'
+                >
+                    <TextArea 
+                      rows={4}
+                      value={Add.note}
+                      placeholder='Please input Note'
+                      onChange={(e) => handleFieldChange('note', e.target.value)}
+                    />
                 </Form.Item>
 
             </Form>
@@ -245,15 +306,25 @@ const TestPointTable = () => {
       >
             <Form layout='vertical'>
                 <Form.Item label='TP Number'>
-                    <Input value={{data}.data.tp_number} onChange={(e) => setData(e.target.value)} />
+                    <Input 
+                      value={RowSelect.tp_number} 
+                      onChange={(e) => handleInputChange('tp_number', e.target.value)}
+                    />
                 </Form.Item>
 
                 <Form.Item label='TP Description'>
-                    <Input value={{data}.data.tp_description} onChange={(e) => setData(e.target.value)} />
+                    <Input 
+                      value={RowSelect.tp_description} 
+                      onChange={(e) => handleInputChange('tp_description', e.target.value)}
+                    />
                 </Form.Item>
 
                 <Form.Item label='Note'>
-                    <Input value={{data}.data.note} onChange={(e) => setData(e.target.value)} />
+                    <TextArea 
+                      rows= {4}
+                      value={RowSelect.note} 
+                      onChange={(e) => handleInputChange('note', e.target.value)}
+                    />
                 </Form.Item>
 
             </Form>
